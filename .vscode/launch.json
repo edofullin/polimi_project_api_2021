@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}",
-            "args": [],
+            "args": ["<", "${workspaceFolder}/open_tests/input_2"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
@@ -20,9 +20,6 @@
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
-                },
-                {
-                    "text": "settings set target.input-path ${workspaceFolder}/open_tests/input_1"
                 }
             ],
             "preLaunchTask": "C/C++: gcc build active file",

@@ -16,12 +16,12 @@ int main()
 {
 
     int N, K;
-    char buffer[50];
+    char buffer[4000];
     graph_t graphs[100];
-    int last_used = 0;
+    int next = 0;
 
-    scanf("%s", buffer);
-    parse_head(buffer, &N, &K);
+    scanf("%d", &N);
+    scanf("%d", &K);
 
     while (1)
     {
@@ -29,43 +29,37 @@ int main()
         if (!strcmp(buffer, "AggiungiGrafo"))
         {
             // aggiungi grafo
+            printf("Aggiungo Grafo #%d", next);
 
-            graphs[last_used+1].col = N;
-            graphs[last_used+1].matrix = malloc(N * N * sizeof(int));
+            graphs[next].col = N;
+            graphs[next].matrix = malloc(N * N * sizeof(int));
             int index = 0;
             char *tok;
 
             for (int i = 0; i < N; i++)
             {
-                scanf("%d", buffer);
+                scanf("%s", buffer);
                 tok = strtok(buffer, ",");
-                *(graphs[last_used+1].matrix + index) = atoi(tok);
+                *(graphs[next].matrix + index++) = atoi(tok);
 
                 for (int j = 0; j < N - 1; ++j)
                 {
 
                     tok = strtok(NULL, ",");
-                    *(graphs[last_used+1].matrix + index) = atoi(tok);
-                    index++;
+                    *(graphs[next].matrix + index++) = atoi(tok);
                 }
             }
+
+            next++;
         }
         else if (!strcmp(buffer, "TopK"))
         {
             // top K
+            exit(0);
         }
         else
         {
             exit(0);
         }
     }
-}
-
-void parse_head(char *str, int *N, int *K)
-{
-    char *tok = strtok(str, ",");
-    N = atoi(tok);
-
-    tok = strtok(NULL, ",");
-    K = atoi(tok);
 }
