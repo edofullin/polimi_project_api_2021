@@ -20,87 +20,21 @@ typedef struct {
     u_int32_t position;
 } pos_tuple_t;
 
-int minDistance(int dist[], bool sptSet[], int V) {
-    // Initialize min value
-    int min = INT_MAX, min_index = -1;
-
-    for (int v = 0; v < V; v++)
-        if (sptSet[v] == false && dist[v] <= min)
-            min = dist[v], min_index = v;
-
-    return min_index;
-}
-
-int *dijkstra(const graph_t *graph, int src) {
-    int V = graph->vert_num;
-    int *dist = malloc(V * sizeof(int));  // The output array.  dist[i] will hold the shortest
-    // distance from src to i
-
-    bool sptSet[V];  // sptSet[i] will be true if vertex i is included in shortest
-    // path tree or shortest distance from src to i is finalized
-
-    // Initialize all distances as INFINITE and stpSet[] as false
-    for (int i = 0; i < V; i++)
-        dist[i] = INT_MAX, sptSet[i] = false;
-
-    // Distance of source vertex from itself is always 0
-    dist[src] = 0;
-
-    // Find shortest path for all vertices
-    for (int count = 0; count < V - 1; count++) {
-        // Pick the minimum distance vertex from the set of vertices not
-        // yet processed. u is always equal to src in the first iteration.
-        int u = minDistance(dist, sptSet, V);
-
-        // Mark the picked vertex as processed
-        sptSet[u] = true;
-
-        // Update dist value of the adjacent vertices of the picked vertex.
-        for (int v = 0; v < V; v++) {
-            // Update dist[v] only if is not in sptSet, there is an edge from
-            // u to v, and total weight of path from src to  v through u is
-            // smaller than current value of dist[v]
-            if (!sptSet[v] && graph->matrix[u * V + v] && dist[u] != INT_MAX && dist[u] + graph->matrix[u * V + v] < dist[v])
-                dist[v] = dist[u] + graph->matrix[u * V + v];
-        }
-    }
-
-    return dist;
-}
-
-u_int64_t compute_score(const graph_t *graph) {
-    int *points = dijkstra(graph, 0);
-    u_int64_t sum = 0;
-
-    for (u_int32_t i = 0; i < graph->vert_num; i++) {
-        if (points[i] != INT_MAX)
-            sum += points[i];
-    }
-
-    return sum;
-}
-
-u_int64_t find_max_i(const pos_tuple_t *arr, u_int32_t len) {
-    u_int64_t max = 0;
-    u_int32_t max_i = 0;
-
-    for (u_int32_t i = 0; i < len; i++) {
-        if (arr[i].score > max) {
-            max = arr[i].score;
-            max_i = i;
-        }
-    }
-
-    return max_i;
-}
+int my_stoi(const char *);
+int get_distance(int dist[], bool sptSet[], int V);
+int *dijkstra(const graph_t *graph, int src);
+u_int64_t compute_score(const graph_t *graph);
+u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len);
 
 int main() {
-    u_int32_t N, K;
     char buffer[STR_BUFF_SIZE];
+
+    u_int32_t N, K;
+
     u_int32_t current_num = 0;
     graph_t g_current;
-    pos_tuple_t *scores;
 
+    pos_tuple_t *scores;
     int first_topk = 1;
 
     if (scanf("%d", &N) == EOF) {
@@ -134,11 +68,11 @@ int main() {
                     exit(0);
                 };
                 tok = strtok(buffer, ",");
-                *(g_current.matrix + index++) = atoi(tok);
+                *(g_current.matrix + index++) = my_stoi(tok);
 
                 for (int j = 0; j < N - 1; ++j) {
                     tok = strtok(NULL, ",");
-                    *(g_current.matrix + index++) = atoi(tok);
+                    *(g_current.matrix + index++) = my_stoi(tok);
                 }
             }
 
@@ -185,7 +119,7 @@ int main() {
 
             for (int i = 0; i < K; i++) {
                 if (scores[i].score == -1) continue;
-                if(!first_flag) printf(" ");
+                if (!first_flag) printf(" ");
                 printf("%d", scores[i].position);
                 first_flag = 0;
             }
@@ -195,4 +129,73 @@ int main() {
             exit(0);
         }
     }
+}
+
+int my_stoi(const char *str) {
+    int val = 0;
+    while (*str) {
+        val = val * 10 + (*str++ - '0');
+    }
+    return val;
+}
+
+int get_distance(int dist[], bool sptSet[], int V) {
+    int min = INT_MAX, min_index = -1;
+
+    for (int v = 0; v < V; v++)
+        if (sptSet[v] == false && dist[v] <= min)
+            min = dist[v], min_index = v;
+
+    return min_index;
+}
+
+int *dijkstra(const graph_t *graph, int src) {
+    int V = graph->vert_num;
+    int *dist = malloc(V * sizeof(int));
+
+    bool sptSet[V];
+
+    for (int i = 0; i < V; i++)
+        dist[i] = INT_MAX, sptSet[i] = false;
+
+    dist[src] = 0;
+
+    for (int count = 0; count < V - 1; count++) {
+        int u = get_distance(dist, sptSet, V);
+
+        sptSet[u] = true;
+
+        for (int v = 0; v < V; v++) {
+            if (!sptSet[v] && graph->matrix[u * V + v] && dist[u] != INT_MAX && dist[u] + graph->matrix[u * V + v] < dist[v])
+                dist[v] = dist[u] + graph->matrix[u * V + v];
+        }
+    }
+
+    return dist;
+}
+
+u_int64_t compute_score(const graph_t *graph) {
+    int *points = dijkstra(graph, 0);
+    u_int64_t sum = 0;
+
+    for (u_int32_t i = 0; i < graph->vert_num; i++) {
+        if (points[i] != INT_MAX)
+            sum += points[i];
+    }
+
+    return sum;
+}
+
+u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len) {
+    u_int64_t max = 0;
+    u_int32_t max_i = 0;
+
+    for (u_int32_t i = 0; i < len; i++) {
+        if (arr[i].score > max) {
+            max = arr[i].score;
+            max_i = i;
+        }
+    }
+
+    return max_i;
 }
