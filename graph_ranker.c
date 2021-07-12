@@ -20,12 +20,12 @@ int main()
     graph_t graphs[100];
     int next = 0;
 
-    scanf("%d", &N);
-    scanf("%d", &K);
+    if(!scanf("%d", &N)) { exit(-1); };
+    if(!scanf("%d", &K)) { exit(-1); };
 
     while (1)
     {
-        scanf("%s", buffer);
+        if(!scanf("%s", buffer)) { exit(-1); };
         if (!strcmp(buffer, "AggiungiGrafo"))
         {
             // aggiungi grafo
@@ -38,7 +38,7 @@ int main()
 
             for (int i = 0; i < N; i++)
             {
-                scanf("%s", buffer);
+                if(!scanf("%s", buffer)) { exit(-1); };
                 tok = strtok(buffer, ",");
                 *(graphs[next].matrix + index++) = atoi(tok);
 
@@ -54,11 +54,13 @@ int main()
         }
         else if (!strcmp(buffer, "TopK"))
         {
-            // top K
-            exit(0);
+            // Not implemented
+            printf("TopK not implmented");
+            exit(3);
         }
         else
         {
+            printf("I'm done, good night.");
             exit(0);
         }
     }
