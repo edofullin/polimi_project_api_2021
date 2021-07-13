@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STR_BUFF_SIZE 4096
+#define STR_BUFF_SIZE 8192
 
 void parse_head(char *str, int *N, int *K);
 
@@ -80,7 +80,13 @@ int main() {
 
                 while (read > 0) {
                     if (*it_end == ',' || read == 1) {
-                        u_int32_t num = my_stoi(it_start, it_end - it_start);
+                        u_int32_t num = 0;
+                        u_int32_t len = it_end - it_start;
+
+                        while (len > 0) {
+                            num = num * 10 + (*it_start++ - '0');
+                            len--;
+                        }
 
 #ifdef DEBUG
                         printf("read num %d adding to matrix in pos %d\n", num, index);

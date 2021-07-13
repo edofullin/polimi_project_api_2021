@@ -24,6 +24,18 @@
             ],
             "preLaunchTask": "C/C++: gcc build active file",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "graph_ranker.c",
+                "input/",
+                "test1"
+            ]
         }
     ]
 }

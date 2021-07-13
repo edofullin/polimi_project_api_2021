@@ -3,3 +3,7 @@ outputfile
 callgrind_files
 myoutput*
 massif*
+**/.env
+benchmark/output
+benchmark/binaries
+benchmark/sources
