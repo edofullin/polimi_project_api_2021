@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     #print(f"\nsource file is {source_filename_dir} binary is {binary_filename} cwd is {os.getcwd()}")
 
-    comp_res = subprocess.run(['/usr/bin/gcc', '-DEVAL', '-Wall', '-Werror', '-std=gnu11', '-O2', '-pipe', f'-o', binary_filename, source_filename], capture_output=True, cwd=os.getcwd())
+    comp_res = subprocess.run(['/usr/bin/gcc', '-DEVAL', '-Wall', '-std=gnu11', '-O2', '-pipe', f'-o', binary_filename, source_filename], capture_output=True, cwd=os.getcwd())
     
     if comp_res.returncode != 0:
         print("compilation failed", end='', flush=True)

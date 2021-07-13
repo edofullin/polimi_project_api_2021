@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #define STR_BUFF_SIZE 8192
 
@@ -20,9 +21,159 @@ typedef struct {
     u_int32_t position;
 } pos_tuple_t;
 
+typedef struct {
+    u_int64_t distance;
+    u_int64_t vert;
+} heap_node_t;
+
+typedef struct {
+    u_int32_t maxsize;
+    u_int32_t size;
+    heap_node_t** heap;
+    u_int32_t* posix;
+} min_heap_t;
+
+min_heap_t* allocate_minheap(u_int32_t _maxsize) {
+    min_heap_t* heap = (min_heap_t*)malloc(sizeof(min_heap_t));
+
+    heap->maxsize = _maxsize;
+    heap->heap = (heap_node_t**)malloc(_maxsize*sizeof(heap_node_t));
+    heap->size = 0;
+    heap->posix = (u_int32_t*)malloc(_maxsize * sizeof(__uint32_t));
+
+    return heap;
+}
+
+void swap_heap_nodes(heap_node_t** x, heap_node_t** y) {
+    heap_node_t* tmp = *x;
+    *x = *y;
+    *y = tmp;
+}
+
+void min_heapify(min_heap_t* heap, u_int32_t index) {
+    u_int32_t min = index;
+    u_int32_t left = 2*index + 1, right = 2*index + 2;
+
+    if (left < heap->size && heap->heap[left]->distance < heap->heap[min]->distance)
+        min = left;
+    
+    if (right < heap->size && heap->heap[right]->distance < heap->heap[min]->distance)
+        min = right;
+
+    if(min != index) {
+        heap_node_t* min_node = heap->heap[min];
+        heap_node_t* index_node = heap->heap[index];
+        
+        heap->posix[min_node->vert] = index;
+        heap->posix[index_node->vert] = min;
+
+        swap_heap_nodes(&heap->heap[min], &heap->heap[index]);
+
+        min_heapify(heap, min);
+    }
+
+}
+
+heap_node_t* heap_min_node(min_heap_t* heap) {
+    if(!heap->size) return NULL;
+
+    heap_node_t* root = heap->heap[0];
+
+    heap_node_t* end = heap->heap[heap->size - 1];
+    heap->heap[0] = end;
+
+    heap->posix[root->vert] = heap->size-1;
+    heap->posix[end->vert] = 0;
+
+    heap->size--;
+
+    min_heapify(heap, 0);
+
+    return root;
+}
+
+void update_key(min_heap_t* heap, u_int32_t v, u_int32_t dist) {
+
+    u_int32_t i = heap->posix[v];
+    heap->heap[i]->distance = dist;
+
+    while (i && heap->heap[i]->distance < heap->heap[(i-1)/2]->distance) {
+        heap->posix[heap->heap[i]->vert] =
+									(i-1)/2;
+		heap->posix[heap->heap[
+							(i-1)/2]->vert] = i;
+		swap_heap_nodes(&heap->heap[i],
+				&heap->heap[(i - 1) / 2]);
+
+		// move to parent index
+		i = (i - 1) / 2;
+    }
+    
+}
+
+int in_heap(min_heap_t* heap, int v) {
+    return heap->posix[v] < heap->size;
+}
+
+void dijkstra_h(const graph_t* graph, int src, u_int64_t* distances) {
+
+    u_int32_t V = graph->vert_num;
+
+    min_heap_t* minheap = allocate_minheap(V);
+
+    for (u_int32_t i = 0; i < V; i++)
+    {
+        heap_node_t* node = (heap_node_t*)malloc(sizeof(heap_node_t));
+
+        distances[i] = UINT64_MAX;
+        node->distance = UINT64_MAX;
+        node->vert = i;
+        minheap->heap[i] = node;
+
+        minheap->posix[i] = i;
+    }
+
+    minheap->heap[src]->distance = 0;
+    minheap->heap[src]->distance = distances[src];
+
+    minheap->posix[src] = src;
+    distances[src] = 0;
+
+    update_key(minheap, src, distances[src]);
+
+    minheap->size = V; 
+
+    while(minheap->size > 0) {
+        heap_node_t* min = heap_min_node(minheap);
+
+        u_int32_t* matr_pointer = graph->matrix + (min->vert * V);
+
+        for(u_int32_t i = 0; i < V; ++i) {
+            if(!*(matr_pointer + i)) continue;
+
+            if(in_heap(minheap, i) && distances[min->vert] != UINT64_MAX && *(matr_pointer+i) + distances[min->vert] < distances[i]) {
+                distances[i] = distances[min->vert] + *(matr_pointer+i);
+                update_key(minheap, i, distances[i]);
+            }
+        }
+
+    }
+
+    for (u_int32_t i = 0; i < V; i++)
+    {
+
+        free(minheap->heap[i]);
+        free(minheap->heap[i]);
+
+        if(distances[i] == UINT64_MAX) distances[i] = 0;
+    }
+    
+    
+}
+
 u_int32_t my_stoi(const char *, u_int32_t len);
 u_int32_t get_distance(u_int32_t dist[], bool sptSet[], int V);
-void *dijkstra(const graph_t *graph, int src, u_int32_t *);
+void dijkstra(const graph_t *graph, int src, u_int32_t *);
 u_int64_t compute_score(const graph_t *graph);
 u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len);
 
@@ -189,7 +340,7 @@ u_int32_t get_distance(u_int32_t dist[], bool sptSet[], int V) {
     return min_index;
 }
 
-void *dijkstra(const graph_t *graph, int src, u_int32_t *dist) {
+void dijkstra(const graph_t *graph, int src, u_int32_t *dist) {
     int V = graph->vert_num;
 
     bool sptSet[V];
@@ -209,19 +360,16 @@ void *dijkstra(const graph_t *graph, int src, u_int32_t *dist) {
                 dist[v] = dist[u] + graph->matrix[u * V + v];
         }
     }
-
-    return dist;
 }
 
 u_int64_t compute_score(const graph_t *graph) {
-    u_int32_t *points = (u_int32_t *)malloc(graph->vert_num * sizeof(u_int32_t));
+    u_int64_t *points = (u_int64_t *)malloc(graph->vert_num * sizeof(u_int64_t));
     u_int64_t sum = 0;
 
-    dijkstra(graph, 0, points);
+    dijkstra_h(graph, 0, points);
 
     for (u_int32_t i = 0; i < graph->vert_num; i++) {
-        if (points[i] != INT_MAX)
-            sum += points[i];
+        sum += points[i];
     }
 
     free(points);
