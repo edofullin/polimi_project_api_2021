@@ -1,0 +1,19 @@
+/usr/bin/gcc -DEVAL (-DDEBUG) (-DORDERED) -g3 -Wall -Werror -fsanitize=address -std=gnu11 -pipe -o graph_ranker graph_ranker.c
+
+MEMORY LEAK: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./eseguibile < input (> output)
+CALLTIME: valgrind --tool=callgrind --callgrind-out-file=outputfile ./eseguibile < input (> output)
+
+python3 testcase_generator/inputgen.py tests/testM.txt N K NGRAPHS (OPTIONS)
+
+OPTIONS: 
+
+--edge_prob, type=float, default=0.5, Probabilità con cui inserire un arco nel grafo
+--weight_min, type=int, default=0, Valore minimo dei pesi dei grafi
+--weight_max  type=int, default=2**32-1 Valore massimo dei pesi dei grafi
+--decreasing Rendi i pesi degli archi tendenzialmente decrescenti
+--topk_start Aggiungi comando TopK all'inizio
+--topk_end, Aggiungi TopK alla fine
+--topk_every, type=int, Aggiungi TopK ogni TOPK_EVERY matrici
+--topk_prob, type=float, Aggiungi TopK con una certa probabilità
+
+

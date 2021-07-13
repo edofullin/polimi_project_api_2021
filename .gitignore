@@ -2,3 +2,4 @@ graph_ranker
 outputfile
 callgrind_files
 myoutput*
+massif*

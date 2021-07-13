@@ -26,9 +26,9 @@ void *dijkstra(const graph_t *graph, int src, u_int32_t *);
 u_int64_t compute_score(const graph_t *graph);
 u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len);
 
-int pos_tuple_cmp_funct(const void* a, const void* b) {
-    pos_tuple_t* t1 = (pos_tuple_t*) a;
-    pos_tuple_t* t2 = (pos_tuple_t*) b;
+int pos_tuple_cmp_funct(const void *a, const void *b) {
+    pos_tuple_t *t1 = (pos_tuple_t *)a;
+    pos_tuple_t *t2 = (pos_tuple_t *)b;
 
     return (t1->position - t2->position);
 }
@@ -97,7 +97,7 @@ int main() {
                 }
             }
 
-            if(exit_flag) break;
+            if (exit_flag) break;
 
             u_int64_t score = compute_score(&g_current);
 
@@ -136,7 +136,10 @@ int main() {
         } else if (!strcmp(buffer, "TopK")) {
             int first_flag = 1;
 
+#ifdef ORDERED
+
             qsort(scores, K, sizeof(pos_tuple_t), pos_tuple_cmp_funct);
+#endif
 
             if (!first_topk) {
                 printf("\n");
