@@ -1,5 +1,7 @@
 {
     "files.associations": {
         "stdlib.h": "c"
-    }
+    },
+    "terminal.integrated.fontSize": 16,
+    "terminal.integrated.fontFamily": "monospace"
 }
