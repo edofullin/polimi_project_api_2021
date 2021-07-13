@@ -1,3 +1,4 @@
 graph_ranker
 outputfile
-**.cdf
+callgrind_files
+myoutput*

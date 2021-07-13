@@ -11,7 +11,7 @@ void parse_head(char *str, int *N, int *K);
 typedef struct
 {
     int vert_num;
-    int *matrix;
+    u_int32_t *matrix;
 
 } graph_t;
 
@@ -20,14 +20,22 @@ typedef struct {
     u_int32_t position;
 } pos_tuple_t;
 
-int my_stoi(const char *);
-int get_distance(int dist[], bool sptSet[], int V);
-int *dijkstra(const graph_t *graph, int src);
+u_int32_t my_stoi(const char *, u_int32_t len);
+u_int32_t get_distance(u_int32_t dist[], bool sptSet[], int V);
+void *dijkstra(const graph_t *graph, int src, u_int32_t *);
 u_int64_t compute_score(const graph_t *graph);
 u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len);
 
+int pos_tuple_cmp_funct(const void* a, const void* b) {
+    pos_tuple_t* t1 = (pos_tuple_t*) a;
+    pos_tuple_t* t2 = (pos_tuple_t*) b;
+
+    return (t1->position - t2->position);
+}
+
 int main() {
     char buffer[STR_BUFF_SIZE];
+    int exit_flag = 0;
 
     u_int32_t N, K;
 
@@ -45,7 +53,7 @@ int main() {
     };
 
     g_current.vert_num = N;
-    g_current.matrix = (int *)malloc(N * N * sizeof(int));
+    g_current.matrix = (u_int32_t *)malloc(N * N * sizeof(int));
 
     scores = (pos_tuple_t *)malloc(K * sizeof(pos_tuple_t));
     for (int i = 0; i < K; i++) {
@@ -53,28 +61,43 @@ int main() {
         scores[i].position = -1;
     }
 
-    while (1) {
+    while (!exit_flag) {
         if (scanf("%s", buffer) == EOF) {
-            exit(0);
+            break;
         };
         if (!strcmp(buffer, "AggiungiGrafo")) {
-            // aggiungi grafo
-            // printf("Aggiungo Grafo #%d", next);
-            int index = 0;
-            char *tok;
+            u_int32_t index = 0, read;
+            char *it_start, *it_end;
 
             for (int i = 0; i < N; i++) {
-                if (scanf("%s", buffer) == EOF) {
-                    exit(0);
-                };
-                tok = strtok(buffer, ",");
-                *(g_current.matrix + index++) = my_stoi(tok);
+                if (scanf("%s%n", buffer, &read) == EOF) {
+                    exit_flag = 1;
+                    break;
+                }
 
-                for (int j = 0; j < N - 1; ++j) {
-                    tok = strtok(NULL, ",");
-                    *(g_current.matrix + index++) = my_stoi(tok);
+                it_start = buffer;
+                it_end = buffer;
+
+                while (read > 0) {
+                    if (*it_end == ',' || read == 1) {
+                        u_int32_t num = my_stoi(it_start, it_end - it_start);
+
+#ifdef DEBUG
+                        printf("read num %d adding to matrix in pos %d\n", num, index);
+#endif
+
+                        g_current.matrix[index] = num;
+
+                        it_start = it_end + 1;
+                        index++;
+                    }
+
+                    it_end++;
+                    read--;
                 }
             }
+
+            if(exit_flag) break;
 
             u_int64_t score = compute_score(&g_current);
 
@@ -113,6 +136,8 @@ int main() {
         } else if (!strcmp(buffer, "TopK")) {
             int first_flag = 1;
 
+            qsort(scores, K, sizeof(pos_tuple_t), pos_tuple_cmp_funct);
+
             if (!first_topk) {
                 printf("\n");
             }
@@ -126,20 +151,26 @@ int main() {
 
             first_topk = 0;
         } else {
-            exit(0);
+            break;
         }
     }
+
+    free(g_current.matrix);
+    free(scores);
+    printf("\n");
+    return 0;
 }
 
-int my_stoi(const char *str) {
-    int val = 0;
-    while (*str) {
+u_int32_t my_stoi(const char *str, u_int32_t len) {
+    u_int32_t val = 0;
+    while (len > 0) {
         val = val * 10 + (*str++ - '0');
+        len--;
     }
     return val;
 }
 
-int get_distance(int dist[], bool sptSet[], int V) {
+u_int32_t get_distance(u_int32_t dist[], bool sptSet[], int V) {
     int min = INT_MAX, min_index = -1;
 
     for (int v = 0; v < V; v++)
@@ -149,9 +180,8 @@ int get_distance(int dist[], bool sptSet[], int V) {
     return min_index;
 }
 
-int *dijkstra(const graph_t *graph, int src) {
+void *dijkstra(const graph_t *graph, int src, u_int32_t *dist) {
     int V = graph->vert_num;
-    int *dist = malloc(V * sizeof(int));
 
     bool sptSet[V];
 
@@ -161,7 +191,7 @@ int *dijkstra(const graph_t *graph, int src) {
     dist[src] = 0;
 
     for (int count = 0; count < V - 1; count++) {
-        int u = get_distance(dist, sptSet, V);
+        u_int64_t u = get_distance(dist, sptSet, V);
 
         sptSet[u] = true;
 
@@ -175,13 +205,17 @@ int *dijkstra(const graph_t *graph, int src) {
 }
 
 u_int64_t compute_score(const graph_t *graph) {
-    int *points = dijkstra(graph, 0);
+    u_int32_t *points = (u_int32_t *)malloc(graph->vert_num * sizeof(u_int32_t));
     u_int64_t sum = 0;
+
+    dijkstra(graph, 0, points);
 
     for (u_int32_t i = 0; i < graph->vert_num; i++) {
         if (points[i] != INT_MAX)
             sum += points[i];
     }
+
+    free(points);
 
     return sum;
 }
