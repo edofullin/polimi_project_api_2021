@@ -50,7 +50,7 @@ void swap(void **x, void **y) {
 }
 
 uint32_t my_stoi(const char *str, uint32_t len);
-uint64_t compute_score(const graph_t *graph, minheap_t* heap);
+uint64_t compute_score(const graph_t *graph, minheap_t* heap, uint64_t* points);
 void min_heapify(minheap_t *heap, uint32_t index);
 minheap_node_t *heap_min_node(minheap_t *heap);
 void update_key(minheap_t *heap, uint32_t v, uint32_t dist);
@@ -70,6 +70,7 @@ int main() {
     graph_t g_current;
 
     minheap_t* dheap = (minheap_t*)malloc(sizeof(minheap_t));
+    uint64_t* points;
 
     scores_list_t score_list;
     score_list.head = NULL;
@@ -85,6 +86,8 @@ int main() {
 
     dheap->data = (minheap_node_t**)malloc(N*sizeof(minheap_node_t));
     dheap->node_pos = (uint32_t*)malloc(N*sizeof(uint32_t));
+
+    points = (uint64_t*)malloc(N*sizeof(uint64_t));
 
     g_current.vert_num = N;
     g_current.matrix = (uint32_t *)malloc(N * N * sizeof(int));
@@ -128,7 +131,7 @@ int main() {
 
             if (exit_flag) break;
 
-            uint64_t score = compute_score(&g_current, dheap);
+            uint64_t score = compute_score(&g_current, dheap, points);
 
             list_insert_in_order_capped(&score_list, score, current_num, K);
 
@@ -159,11 +162,12 @@ int main() {
         }
     }
 
-    free(dheap->node_pos);
-    free(dheap->data);
-    free(dheap);
-    free(g_current.matrix);
-    destroy_list(&score_list);
+    // free(points)
+    // free(dheap->node_pos);
+    // free(dheap->data);
+    // free(dheap);
+    // free(g_current.matrix);
+    // destroy_list(&score_list);
     printf("\n");
     return 0;
 }
@@ -177,8 +181,7 @@ inline uint32_t my_stoi(const char *str, uint32_t len) {
     return val;
 }
 
-uint64_t compute_score(const graph_t *graph, minheap_t* heap) {
-    uint64_t *points = (uint64_t *)malloc(graph->vert_num * sizeof(uint64_t));
+uint64_t compute_score(const graph_t *graph, minheap_t* heap, uint64_t* points) {
     uint64_t sum = 0;
 
     dijkstra_h(graph, 0, points, heap);
@@ -186,8 +189,6 @@ uint64_t compute_score(const graph_t *graph, minheap_t* heap) {
     for (uint32_t i = 0; i < graph->vert_num; i++) {
         if (points[i] != UINT64_MAX) sum += points[i];
     }
-
-    free(points);
 
     return sum;
 }
