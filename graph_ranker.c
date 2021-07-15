@@ -5,35 +5,35 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STR_BUFF_SIZE 2048
+#define STR_BUFF_SIZE 4096
 
 typedef struct
 {
     int vert_num;
-    u_int32_t *matrix;
+    uint32_t *matrix;
     float scatter_ratio;
 
 } graph_t;
 
 typedef struct {
-    u_int64_t score;
-    u_int32_t position;
+    uint64_t score;
+    uint32_t position;
 } pos_tuple_t;
 
 typedef struct {
-    u_int64_t distance;
-    u_int64_t vert;
+    uint64_t distance;
+    uint64_t vert;
 } minheap_node_t;
 
 typedef struct {
-    u_int32_t maxsize;
-    u_int32_t size;
+    uint32_t maxsize;
+    uint32_t size;
     minheap_node_t **data;
-    u_int32_t *node_pos;
+    uint32_t *node_pos;
 } minheap_t;
 
 typedef struct node {
-    uint32_t score;
+    uint64_t score;
     uint32_t position;
     struct node *next;
 } scores_list_node_t;
@@ -49,28 +49,28 @@ void swap(void **x, void **y) {
     *y = tmp;
 }
 
-u_int32_t my_stoi(const char *str, u_int32_t len);
-u_int64_t compute_score(const graph_t *graph);
-void min_heapify(minheap_t *heap, u_int32_t index);
+uint32_t my_stoi(const char *str, uint32_t len);
+uint64_t compute_score(const graph_t *graph);
+void min_heapify(minheap_t *heap, uint32_t index);
 minheap_node_t *heap_min_node(minheap_t *heap);
-void update_key(minheap_t *heap, u_int32_t v, u_int32_t dist);
+void update_key(minheap_t *heap, uint32_t v, uint32_t dist);
 int in_heap(minheap_t *heap, int v);
-void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances);
+void dijkstra_h(const graph_t *graph, int src, uint64_t *distances);
 scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next);
-void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t position, uint32_t cap);
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
 void destroy_list(scores_list_t *list);
 
 int main() {
     char buffer[STR_BUFF_SIZE];
     int exit_flag = 0;
 
-    u_int32_t N, K;
+    uint32_t N, K;
 
-    u_int32_t current_num = 0;
+    uint32_t current_num = 0;
     graph_t g_current;
 
-    pos_tuple_t *scores;
     scores_list_t score_list;
+    score_list.head = NULL;
 
     int first_topk = 1;
 
@@ -82,20 +82,15 @@ int main() {
     }
 
     g_current.vert_num = N;
-    g_current.matrix = (u_int32_t *)malloc(N * N * sizeof(int));
-
-    scores = (pos_tuple_t *)malloc(K * sizeof(pos_tuple_t));
-    for (int i = 0; i < K; i++) {
-        scores[i].score = -1;
-        scores[i].position = -1;
-    }
+    g_current.matrix = (uint32_t *)malloc(N * N * sizeof(int));
 
     while (!exit_flag) {
         if (scanf("%s", buffer) == EOF) {
             break;
-        };
-        if (!strcmp(buffer, "AggiungiGrafo")) {
-            u_int32_t index = 0, read;
+        }
+        if (buffer[0] == 'A') {
+            uint32_t index = 0;
+            uint32_t read;
             char *it_start, *it_end;
 
             for (int i = 0; i < N; i++) {
@@ -109,7 +104,7 @@ int main() {
 
                 while (read > 0) {
                     if (*it_end == ',' || read == 1) {
-                        u_int32_t num = my_stoi(it_start, it_end - it_start);
+                        uint32_t num = my_stoi(it_start, it_end - it_start);
 
 #ifdef VERBOSE
                         printf("read num %d adding to matrix in pos %d\n", num, index);
@@ -138,7 +133,7 @@ int main() {
             printf("score for graph %d is %lu\n", current_num, score);
 #endif
 
-        } else if (!strcmp(buffer, "TopK")) {
+        } else if (buffer[0] == 'T') {
             
             int first_flag = 1;
             scores_list_node_t *it = score_list.head;
@@ -161,14 +156,13 @@ int main() {
     }
 
     free(g_current.matrix);
-    free(scores);
     destroy_list(&score_list);
     printf("\n");
     return 0;
 }
 
-inline u_int32_t my_stoi(const char *str, u_int32_t len) {
-    u_int32_t val = 0;
+inline uint32_t my_stoi(const char *str, uint32_t len) {
+    uint32_t val = 0;
     while (len > 0) {
         val = val * 10 + (*str++ - '0');
         len--;
@@ -176,13 +170,13 @@ inline u_int32_t my_stoi(const char *str, u_int32_t len) {
     return val;
 }
 
-u_int64_t compute_score(const graph_t *graph) {
-    u_int64_t *points = (u_int64_t *)malloc(graph->vert_num * sizeof(u_int64_t));
-    u_int64_t sum = 0;
+uint64_t compute_score(const graph_t *graph) {
+    uint64_t *points = (uint64_t *)malloc(graph->vert_num * sizeof(uint64_t));
+    uint64_t sum = 0;
 
     dijkstra_h(graph, 0, points);
 
-    for (u_int32_t i = 0; i < graph->vert_num; i++) {
+    for (uint32_t i = 0; i < graph->vert_num; i++) {
         if (points[i] != UINT64_MAX) sum += points[i];
     }
 
@@ -191,9 +185,9 @@ u_int64_t compute_score(const graph_t *graph) {
     return sum;
 }
 
-void min_heapify(minheap_t *heap, u_int32_t index) {
-    u_int32_t min = index;
-    u_int32_t left = 2 * index + 1, right = 2 * index + 2;
+void min_heapify(minheap_t *heap, uint32_t index) {
+    uint32_t min = index;
+    uint32_t left = 2 * index + 1, right = 2 * index + 2;
 
     if (left < heap->size && heap->data[left]->distance < heap->data[min]->distance)
         min = left;
@@ -232,8 +226,8 @@ minheap_node_t *heap_min_node(minheap_t *heap) {
     return root;
 }
 
-void update_key(minheap_t *heap, u_int32_t v, u_int32_t dist) {
-    u_int32_t i = heap->node_pos[v];
+void update_key(minheap_t *heap, uint32_t v, uint32_t dist) {
+    uint32_t i = heap->node_pos[v];
     heap->data[i]->distance = dist;
 
     while (i && heap->data[i]->distance < heap->data[(i - 1) / 2]->distance) {
@@ -251,15 +245,15 @@ int in_heap(minheap_t *heap, int v) {
     return heap->node_pos[v] < heap->size;
 }
 
-void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances) {
-    u_int32_t verts = graph->vert_num;
+void dijkstra_h(const graph_t *graph, int src, uint64_t *distances) {
+    uint32_t verts = graph->vert_num;
 
     minheap_t *heap = (minheap_t *)malloc(sizeof(minheap_t));  // FREE
 
     heap->maxsize = verts;
     heap->data = (minheap_node_t **)malloc(verts * sizeof(minheap_node_t));  // FREE
     heap->size = 0;
-    heap->node_pos = (u_int32_t *)malloc(verts * sizeof(__uint32_t));
+    heap->node_pos = (uint32_t *)malloc(verts * sizeof(__uint32_t));
 
     for (uint32_t i = 0; i < verts; i++) {
         minheap_node_t *node = (minheap_node_t *)malloc(sizeof(minheap_node_t));
@@ -285,9 +279,9 @@ void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances) {
     while (heap->size > 0) {
         minheap_node_t *min = heap_min_node(heap);
 
-        u_int32_t *matr_pointer = graph->matrix + (min->vert * verts);
+        uint32_t *matr_pointer = graph->matrix + (min->vert * verts);
 
-        for (u_int32_t i = 0; i < verts; ++i) {
+        for (uint32_t i = 0; i < verts; ++i) {
             uint32_t arc = *(matr_pointer + i);
 
             if (!arc) continue;
@@ -320,7 +314,7 @@ scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_nod
     return node;
 }
 
-void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t position, uint32_t cap) {
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap) {
     scores_list_node_t *it;
 
     uint32_t curr = 0;
@@ -339,8 +333,7 @@ void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t p
 
     it = list->head;
 
-    while (true) {
-        if (curr > cap) break;
+    while (curr < cap) {
 
         if (it->next == NULL) {
             it->next = make_node(position, score, NULL);
