@@ -166,10 +166,6 @@ void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances) {
         free(min);
     }
 
-    for (u_int32_t i = 0; i < verts; i++) {
-        if (distances[i] == UINT64_MAX) distances[i] = 0;
-    }
-
     free(heap->node_pos);
     free(heap->data);
     free(heap);
@@ -231,7 +227,24 @@ void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t p
             break;
         }
 
-        if ((it->score < score && it->next->score > score) || (score == it->score)) {
+
+        if(it->score == score) {
+            
+            if(it->next->score != score) {
+                node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
+                node->next = it->next;
+                node->position = position;
+                node->score = score;
+
+                it->next = node;
+                list->length++;
+
+                break;
+            }
+            
+        }
+
+        if (it->score < score && it->next->score > score) {
 
             node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
             node->next = it->next;
@@ -335,7 +348,6 @@ int main() {
 
 #ifdef VERBOSE
                         printf("read num %d adding to matrix in pos %d\n", num, index);
-                        print_list(&score_list);
 #endif
 
                         g_current.matrix[index] = num;
@@ -357,7 +369,6 @@ int main() {
 
 #ifdef DEBUG
             printf("score for graph %d is %lu\n", current_num, score);
-            print_list(&score_list);
 #endif
 
             list_insert_in_order_capped(&score_list, score, current_num, K);
@@ -367,10 +378,6 @@ int main() {
         } else if (!strcmp(buffer, "TopK")) {
             int first_flag = 1;
             scores_list_node_t *it = score_list.head;
-
-#ifdef DEBUG
-            print_list(&score_list);
-#endif
 
             if (!first_topk) {
                 printf("\n");
