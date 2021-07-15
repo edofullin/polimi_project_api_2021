@@ -5,10 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STR_BUFF_SIZE 8192
-#define SCATTER_RATIO_LIMIT 0.3
-
-void parse_head(char *str, int *N, int *K);
+#define STR_BUFF_SIZE 2048
 
 typedef struct
 {
@@ -50,6 +47,148 @@ void swap(void **x, void **y) {
     void *tmp = *x;
     *x = *y;
     *y = tmp;
+}
+
+u_int32_t my_stoi(const char *str, u_int32_t len);
+u_int64_t compute_score(const graph_t *graph);
+void min_heapify(minheap_t *heap, u_int32_t index);
+minheap_node_t *heap_min_node(minheap_t *heap);
+void update_key(minheap_t *heap, u_int32_t v, u_int32_t dist);
+int in_heap(minheap_t *heap, int v);
+void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances);
+scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next);
+void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t position, uint32_t cap);
+void destroy_list(scores_list_t *list);
+
+int main() {
+    char buffer[STR_BUFF_SIZE];
+    int exit_flag = 0;
+
+    u_int32_t N, K;
+
+    u_int32_t current_num = 0;
+    graph_t g_current;
+
+    pos_tuple_t *scores;
+    scores_list_t score_list;
+
+    int first_topk = 1;
+
+    if (scanf("%d", &N) == EOF) {
+        exit(0);
+    }
+    if (scanf("%d", &K) == EOF) {
+        exit(0);
+    }
+
+    g_current.vert_num = N;
+    g_current.matrix = (u_int32_t *)malloc(N * N * sizeof(int));
+
+    scores = (pos_tuple_t *)malloc(K * sizeof(pos_tuple_t));
+    for (int i = 0; i < K; i++) {
+        scores[i].score = -1;
+        scores[i].position = -1;
+    }
+
+    while (!exit_flag) {
+        if (scanf("%s", buffer) == EOF) {
+            break;
+        };
+        if (!strcmp(buffer, "AggiungiGrafo")) {
+            u_int32_t index = 0, read;
+            char *it_start, *it_end;
+
+            for (int i = 0; i < N; i++) {
+                if (scanf("%s%n", buffer, &read) == EOF) {
+                    exit_flag = 1;
+                    break;
+                }
+
+                it_start = buffer;
+                it_end = buffer;
+
+                while (read > 0) {
+                    if (*it_end == ',' || read == 1) {
+                        u_int32_t num = my_stoi(it_start, it_end - it_start);
+
+#ifdef VERBOSE
+                        printf("read num %d adding to matrix in pos %d\n", num, index);
+#endif
+
+                        g_current.matrix[index] = num;
+
+                        it_start = it_end + 1;
+                        index++;
+                    }
+
+                    it_end++;
+                    read--;
+                }
+            }
+
+            if (exit_flag) break;
+
+            uint64_t score = compute_score(&g_current);
+
+            list_insert_in_order_capped(&score_list, score, current_num, K);
+
+            current_num++;
+
+#ifdef DEBUG
+            printf("score for graph %d is %lu\n", current_num, score);
+#endif
+
+        } else if (!strcmp(buffer, "TopK")) {
+            
+            int first_flag = 1;
+            scores_list_node_t *it = score_list.head;
+
+            if (!first_topk) {
+                printf("\n");
+            }
+
+            for (int i = 0; i < K && it != NULL; i++) {
+                if (!first_flag) printf(" ");
+                printf("%d", it->position);
+                first_flag = 0;
+                it = it->next;
+            }
+
+            first_topk = 0;
+        } else {
+            break;
+        }
+    }
+
+    free(g_current.matrix);
+    free(scores);
+    destroy_list(&score_list);
+    printf("\n");
+    return 0;
+}
+
+inline u_int32_t my_stoi(const char *str, u_int32_t len) {
+    u_int32_t val = 0;
+    while (len > 0) {
+        val = val * 10 + (*str++ - '0');
+        len--;
+    }
+    return val;
+}
+
+u_int64_t compute_score(const graph_t *graph) {
+    u_int64_t *points = (u_int64_t *)malloc(graph->vert_num * sizeof(u_int64_t));
+    u_int64_t sum = 0;
+
+    dijkstra_h(graph, 0, points);
+
+    for (u_int32_t i = 0; i < graph->vert_num; i++) {
+        if (points[i] != UINT64_MAX) sum += points[i];
+    }
+
+    free(points);
+
+    return sum;
 }
 
 void min_heapify(minheap_t *heap, u_int32_t index) {
@@ -171,41 +310,29 @@ void dijkstra_h(const graph_t *graph, int src, u_int64_t *distances) {
     free(heap);
 }
 
-u_int32_t my_stoi(const char *, u_int32_t len);
-u_int64_t get_distance(u_int64_t dist[], bool sptSet[], int V);
-void dijkstra(const graph_t *graph, int src, u_int64_t *);
-u_int64_t compute_score(const graph_t *graph);
-u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len);
+scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next) {
+    scores_list_node_t *node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
 
-int pos_tuple_cmp_funct(const void *a, const void *b) {
-    pos_tuple_t *t1 = (pos_tuple_t *)a;
-    pos_tuple_t *t2 = (pos_tuple_t *)b;
+    node->next = next;
+    node->position = position;
+    node->score = score;
 
-    return (t1->position - t2->position);
+    return node;
 }
 
 void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t position, uint32_t cap) {
-    scores_list_node_t *node;
     scores_list_node_t *it;
 
     uint32_t curr = 0;
 
     if (list->head == NULL) {
-        node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
-        node->next = NULL;
-        node->position = position;
-        node->score = score;
-        list->head = node;
+        list->head = make_node(position, score, NULL);
         list->length++;
         return;
     }
 
     if (score < list->head->score) {
-        node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
-        node->next = list->head;
-        node->position = position;
-        node->score = score;
-        list->head = node;
+        list->head = make_node(position, score, list->head);
         list->length++;
         return;
     }
@@ -213,45 +340,23 @@ void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t p
     it = list->head;
 
     while (true) {
-        if(curr > cap) break;
-        
-        if (it->next == NULL) {
+        if (curr > cap) break;
 
-            node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
-            node->next = NULL;
-            node->position = position;
-            node->score = score;
-            it->next = node;
+        if (it->next == NULL) {
+            it->next = make_node(position, score, NULL);
+            list->length++;
+            break;
+        }
+
+        if (it->score == score && it->next->score != score) {
+            it->next = make_node(position, score, it->next);
             list->length++;
 
             break;
         }
 
-
-        if(it->score == score) {
-            
-            if(it->next->score != score) {
-                node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
-                node->next = it->next;
-                node->position = position;
-                node->score = score;
-
-                it->next = node;
-                list->length++;
-
-                break;
-            }
-            
-        }
-
         if (it->score < score && it->next->score > score) {
-
-            node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
-            node->next = it->next;
-            node->position = position;
-            node->score = score;
-
-            it->next = node;
+            it->next = make_node(position, score, it->next);
             list->length++;
 
             break;
@@ -260,17 +365,6 @@ void list_insert_in_order_capped(scores_list_t *list, uint32_t score, uint32_t p
         curr++;
         it = it->next;
     }
-}
-
-void print_list(scores_list_t *list) {
-    scores_list_node_t *it = list->head;
-
-    while (it != NULL) {
-        printf("%d(%d) ", it->score, it->position);
-        it = it->next;
-    }
-
-    printf("\n");
 }
 
 void destroy_list(scores_list_t *list) {
@@ -283,195 +377,4 @@ void destroy_list(scores_list_t *list) {
         free(it);
         it = next;
     }
-}
-
-void destory_list_nodes(scores_list_node_t *node) {
-    while (node != NULL) {
-        scores_list_node_t *next = node->next;
-        free(node);
-        node = next;
-    }
-}
-
-int main() {
-    char buffer[STR_BUFF_SIZE];
-    int exit_flag = 0;
-
-    u_int32_t N, K;
-
-    u_int32_t current_num = 0;
-    graph_t g_current;
-
-    pos_tuple_t *scores;
-    scores_list_t score_list;
-
-    int first_topk = 1;
-
-    if (scanf("%d", &N) == EOF) {
-        exit(0);
-    };
-    if (scanf("%d", &K) == EOF) {
-        exit(0);
-    };
-
-    g_current.vert_num = N;
-    g_current.matrix = (u_int32_t *)malloc(N * N * sizeof(int));
-
-    scores = (pos_tuple_t *)malloc(K * sizeof(pos_tuple_t));
-    for (int i = 0; i < K; i++) {
-        scores[i].score = -1;
-        scores[i].position = -1;
-    }
-
-    while (!exit_flag) {
-        if (scanf("%s", buffer) == EOF) {
-            break;
-        };
-        if (!strcmp(buffer, "AggiungiGrafo")) {
-            u_int32_t index = 0, read;
-            char *it_start, *it_end;
-            uint32_t zeros = 0;
-
-            for (int i = 0; i < N; i++) {
-                if (scanf("%s%n", buffer, &read) == EOF) {
-                    exit_flag = 1;
-                    break;
-                }
-
-                it_start = buffer;
-                it_end = buffer;
-
-                while (read > 0) {
-                    if (*it_end == ',' || read == 1) {
-                        u_int32_t num = my_stoi(it_start, it_end - it_start);
-                        if (num == 0) zeros++;
-
-#ifdef VERBOSE
-                        printf("read num %d adding to matrix in pos %d\n", num, index);
-#endif
-
-                        g_current.matrix[index] = num;
-
-                        it_start = it_end + 1;
-                        index++;
-                    }
-
-                    it_end++;
-                    read--;
-                }
-            }
-
-            if (exit_flag) break;
-
-            g_current.scatter_ratio = ((float)zeros) / N * N;
-
-            uint64_t score = compute_score(&g_current);
-
-#ifdef DEBUG
-            printf("score for graph %d is %lu\n", current_num, score);
-#endif
-
-            list_insert_in_order_capped(&score_list, score, current_num, K);
-
-            current_num++;
-
-        } else if (!strcmp(buffer, "TopK")) {
-            int first_flag = 1;
-            scores_list_node_t *it = score_list.head;
-
-            if (!first_topk) {
-                printf("\n");
-            }
-
-            for (int i = 0; i < K && it != NULL; i++) {
-                if (!first_flag) printf(" ");
-                printf("%d", it->position);
-                first_flag = 0;
-                it = it->next;
-            }
-
-            first_topk = 0;
-        } else {
-            break;
-        }
-    }
-
-    free(g_current.matrix);
-    free(scores);
-    destroy_list(&score_list);
-    printf("\n");
-    return 0;
-}
-
-inline u_int32_t my_stoi(const char *str, u_int32_t len) {
-    u_int32_t val = 0;
-    while (len > 0) {
-        val = val * 10 + (*str++ - '0');
-        len--;
-    }
-    return val;
-}
-
-u_int64_t get_distance(u_int64_t dist[], bool sptSet[], int V) {
-    uint64_t min = UINT64_MAX, min_index = -1;
-
-    for (int v = 0; v < V; v++)
-        if (sptSet[v] == false && dist[v] <= min)
-            min = dist[v], min_index = v;
-
-    return min_index;
-}
-
-void dijkstra(const graph_t *graph, int src, u_int64_t *dist) {
-    int V = graph->vert_num;
-
-    bool sptSet[V];
-
-    for (int i = 0; i < V; i++)
-        dist[i] = UINT64_MAX, sptSet[i] = false;
-
-    dist[src] = 0;
-
-    for (int count = 0; count < V - 1; count++) {
-        u_int64_t u = get_distance(dist, sptSet, V);
-
-        sptSet[u] = true;
-
-        for (int v = 0; v < V; v++) {
-            if (!sptSet[v] && graph->matrix[u * V + v] && dist[u] != UINT64_MAX && dist[u] + graph->matrix[u * V + v] < dist[v])
-                dist[v] = dist[u] + graph->matrix[u * V + v];
-        }
-    }
-}
-
-u_int64_t compute_score(const graph_t *graph) {
-    u_int64_t *points = (u_int64_t *)malloc(graph->vert_num * sizeof(u_int64_t));
-    u_int64_t sum = 0;
-
-    if (graph->scatter_ratio < SCATTER_RATIO_LIMIT)
-        dijkstra(graph, 0, points);
-    else
-        dijkstra_h(graph, 0, points);
-
-    for (u_int32_t i = 0; i < graph->vert_num; i++) {
-        if (points[i] != UINT64_MAX) sum += points[i];
-    }
-
-    free(points);
-
-    return sum;
-}
-
-u_int32_t find_max_i(const pos_tuple_t *arr, u_int32_t len) {
-    u_int64_t max = 0;
-    u_int32_t max_i = 0;
-
-    for (u_int32_t i = 0; i < len; i++) {
-        if (arr[i].score > max) {
-            max = arr[i].score;
-            max_i = i;
-        }
-    }
-
-    return max_i;
 }
