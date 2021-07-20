@@ -11,7 +11,6 @@ typedef struct
 {
     int vert_num;
     uint32_t *matrix;
-    float scatter_ratio;
 
 } graph_t;
 
