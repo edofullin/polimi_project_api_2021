@@ -57,7 +57,7 @@ void update_key(minheap_t *heap, uint32_t v, uint32_t dist);
 int in_heap(minheap_t *heap, int v);
 void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* heap);
 scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next);
-void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap, scores_list_node_t**);
 void destroy_list(scores_list_t *list);
 
 int main() {
@@ -75,6 +75,8 @@ int main() {
     scores_list_t score_list;
     score_list.head = NULL;
 
+    scores_list_node_t* k_position;
+
     int first_topk = 1;
 
     if (scanf("%d", &N) == EOF) {
@@ -86,6 +88,12 @@ int main() {
 
     dheap->data = (minheap_node_t**)malloc(N*sizeof(minheap_node_t));
     dheap->node_pos = (uint32_t*)malloc(N*sizeof(uint32_t));
+
+    for (uint32_t i = 0; i < N; i++)
+    {
+        dheap->data[i] = (minheap_node_t *)malloc(sizeof(minheap_node_t));
+    }
+    
 
     points = (uint64_t*)malloc(N*sizeof(uint64_t));
 
@@ -133,7 +141,7 @@ int main() {
 
             uint64_t score = compute_score(&g_current, dheap, points);
 
-            list_insert_in_order_capped(&score_list, score, current_num, K);
+            list_insert_in_order_capped(&score_list, score, current_num, K, &k_position);
 
             current_num++;
 
@@ -162,12 +170,12 @@ int main() {
         }
     }
 
-    // free(points)
-    // free(dheap->node_pos);
-    // free(dheap->data);
-    // free(dheap);
-    // free(g_current.matrix);
-    // destroy_list(&score_list);
+    free(points);
+    free(dheap->node_pos);
+    free(dheap->data);
+    free(dheap);
+    free(g_current.matrix);
+    destroy_list(&score_list);
     printf("\n");
     return 0;
 }
@@ -227,6 +235,8 @@ minheap_node_t *heap_min_node(minheap_t *heap) {
     heap->node_pos[max->vert] = heap->size - 1;
     heap->node_pos[end->vert] = 0;
 
+    heap->data[heap->size - 1] = max;
+
     heap->size--;
 
     min_heapify(heap, 0);
@@ -260,12 +270,11 @@ void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* h
     heap->size = 0;
 
     for (uint32_t i = 0; i < verts; i++) {
-        minheap_node_t *node = (minheap_node_t *)malloc(sizeof(minheap_node_t));
+        // minheap_node_t *node = (minheap_node_t *)malloc(sizeof(minheap_node_t));
 
         distances[i] = UINT64_MAX;
-        node->distance = UINT64_MAX;
-        node->vert = i;
-        heap->data[i] = node;
+        heap->data[i]->distance = UINT64_MAX;
+        heap->data[i]->vert = i;
 
         heap->node_pos[i] = i;
     }
@@ -298,7 +307,7 @@ void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* h
             }
         }
 
-        free(min);
+        // free(min);
     }
 }
 
@@ -312,7 +321,7 @@ scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_nod
     return node;
 }
 
-void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap) {
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap, scores_list_node_t** kpos) {
     scores_list_node_t *it;
 
     uint32_t curr = 0;
