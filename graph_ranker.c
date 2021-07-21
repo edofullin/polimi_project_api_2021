@@ -35,10 +35,12 @@ typedef struct node {
     uint64_t score;
     uint32_t position;
     struct node *next;
+    struct node *prev;
 } scores_list_node_t;
 
 typedef struct {
     scores_list_node_t *head;
+    scores_list_node_t *tail;
     uint32_t length;
 } scores_list_t;
 
@@ -49,15 +51,26 @@ void swap(void **x, void **y) {
 }
 
 uint32_t my_stoi(const char *str, uint32_t len);
-uint64_t compute_score(const graph_t *graph, minheap_t* heap, uint64_t* points);
+uint64_t compute_score(const graph_t *graph, minheap_t *heap, uint64_t *points);
 void min_heapify(minheap_t *heap, uint32_t index);
 minheap_node_t *heap_min_node(minheap_t *heap);
 void update_key(minheap_t *heap, uint32_t v, uint32_t dist);
 int in_heap(minheap_t *heap, int v);
-void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* heap);
-scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next);
-void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap, scores_list_node_t**);
+void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t *heap);
+scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next, scores_list_node_t *prev);
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
 void destroy_list(scores_list_t *list);
+void destroy_list_from(scores_list_t *list, scores_list_node_t *from);
+
+void print_list(scores_list_t *list) {
+    scores_list_node_t *it = list->head;
+    while (it) {
+        printf("%d(%ld) ", it->position, it->score);
+        it = it->next;
+    }
+
+    printf("\n");
+}
 
 int main() {
     char buffer[STR_BUFF_SIZE];
@@ -68,13 +81,13 @@ int main() {
     uint32_t current_num = 0;
     graph_t g_current;
 
-    minheap_t* dheap = (minheap_t*)malloc(sizeof(minheap_t));
-    uint64_t* points;
+    minheap_t *dheap = (minheap_t *)malloc(sizeof(minheap_t));
+    uint64_t *points;
 
     scores_list_t score_list;
     score_list.head = NULL;
-
-    scores_list_node_t* k_position;
+    score_list.tail = NULL;
+    score_list.length = 0;
 
     int first_topk = 1;
 
@@ -85,16 +98,14 @@ int main() {
         exit(0);
     }
 
-    dheap->data = (minheap_node_t**)malloc(N*sizeof(minheap_node_t));
-    dheap->node_pos = (uint32_t*)malloc(N*sizeof(uint32_t));
+    dheap->data = (minheap_node_t **)malloc(N * sizeof(minheap_node_t));
+    dheap->node_pos = (uint32_t *)malloc(N * sizeof(uint32_t));
 
-    for (uint32_t i = 0; i < N; i++)
-    {
+    for (uint32_t i = 0; i < N; i++) {
         dheap->data[i] = (minheap_node_t *)malloc(sizeof(minheap_node_t));
     }
-    
 
-    points = (uint64_t*)malloc(N*sizeof(uint64_t));
+    points = (uint64_t *)malloc(N * sizeof(uint64_t));
 
     g_current.vert_num = N;
     g_current.matrix = (uint32_t *)malloc(N * N * sizeof(int));
@@ -140,13 +151,16 @@ int main() {
 
             uint64_t score = compute_score(&g_current, dheap, points);
 
-            list_insert_in_order_capped(&score_list, score, current_num, K, &k_position);
-
-            current_num++;
+            list_insert_in_order_capped(&score_list, score, current_num, K);
 
 #ifdef DEBUG
             printf("score for graph %d is %lu\n", current_num, score);
+            printf("list length is %d\n", score_list.length);
+            printf("list tail is pointing %d(%ld)\n", score_list.tail->position, score_list.tail->score);
+            print_list(&score_list);
 #endif
+
+            current_num++;
 
         } else if (buffer[0] == 'T') {
             int first_flag = 1;
@@ -188,7 +202,7 @@ inline uint32_t my_stoi(const char *str, uint32_t len) {
     return val;
 }
 
-uint64_t compute_score(const graph_t *graph, minheap_t* heap, uint64_t* points) {
+uint64_t compute_score(const graph_t *graph, minheap_t *heap, uint64_t *points) {
     uint64_t sum = 0;
 
     dijkstra_h(graph, 0, points, heap);
@@ -262,7 +276,7 @@ int in_heap(minheap_t *heap, int v) {
     return heap->node_pos[v] < heap->size;
 }
 
-void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* heap) {
+void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t *heap) {
     uint32_t verts = graph->vert_num;
 
     heap->maxsize = verts;
@@ -310,52 +324,76 @@ void dijkstra_h(const graph_t *graph, int src, uint64_t *distances, minheap_t* h
     }
 }
 
-scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next) {
+scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next, scores_list_node_t *prev) {
     scores_list_node_t *node = (scores_list_node_t *)malloc(sizeof(scores_list_node_t));
 
     node->next = next;
     node->position = position;
     node->score = score;
+    node->prev = prev;
 
     return node;
 }
 
-void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap, scores_list_node_t** kpos) {
+void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap) {
     scores_list_node_t *it;
+    scores_list_node_t *node;
 
     uint32_t curr = 0;
 
+    if( list->length >= cap && score > list->tail->score) return;
+
     if (list->head == NULL) {
-        list->head = make_node(position, score, NULL);
+        node = make_node(position, score, NULL, NULL);
+        list->head = node;
+        list->tail = node;
         list->length++;
         return;
     }
 
     if (score < list->head->score) {
-        list->head = make_node(position, score, list->head);
+        node = make_node(position, score, list->head, NULL);
+        list->head->prev = node;
+        list->head = node;
         list->length++;
+
+        if (list->length > cap) destroy_list_from(list, list->tail);
+
         return;
     }
 
     it = list->head;
 
-    while (curr < cap) {
+    while (curr < cap && it != NULL) {
         if (it->next == NULL) {
-            it->next = make_node(position, score, NULL);
+            node = make_node(position, score, NULL, it);
+            it->next = node;
+            list->tail = node;
             list->length++;
+
+            if (list->length > cap) destroy_list_from(list, list->tail);
+
             break;
         }
 
         if (it->score == score && it->next->score != score) {
-            it->next = make_node(position, score, it->next);
+            node = make_node(position, score, it->next, it);
+            it->next->prev = node;
+            it->next = node;
             list->length++;
+
+            if (list->length > cap) destroy_list_from(list, list->tail);
 
             break;
         }
 
         if (it->score < score && it->next->score > score) {
-            it->next = make_node(position, score, it->next);
+            node = make_node(position, score, it->next, it);
+            it->next->prev = node;
+            it->next = node;
             list->length++;
+
+            if (list->length > cap) destroy_list_from(list, list->tail);
 
             break;
         }
@@ -368,11 +406,23 @@ void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t p
 void destroy_list(scores_list_t *list) {
     if (!list) return;
 
-    scores_list_node_t *it = list->head;
+    destroy_list_from(list, list->head);
+}
+
+void destroy_list_from(scores_list_t *list, scores_list_node_t *from) {
+    if (!list) return;
+
+    if (list->head != from) {
+        list->tail = from->prev;
+        list->tail->next = NULL;
+    }
+
+    scores_list_node_t *it = from;
 
     while (it != NULL) {
         scores_list_node_t *next = it->next;
         free(it);
+        list->length--;
         it = next;
     }
 }
