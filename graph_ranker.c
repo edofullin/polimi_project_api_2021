@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define STR_BUFF_SIZE 4096
-#define MAX_SCATTER 0.3
+#define MAX_SCATTER 0.3f
 
 typedef struct
 {
@@ -118,10 +118,7 @@ int main() {
     minheap_t *dheap = (minheap_t *)malloc(sizeof(minheap_t));
     uint64_t *points;
 
-    scores_list_t score_list;
-    score_list.head = NULL;
-    score_list.tail = NULL;
-    score_list.length = 0;
+    scores_list_t score_list = { .head = NULL, .tail = NULL, .length = 0};
 
     int first_topk = 1;
 
@@ -185,6 +182,7 @@ int main() {
             }
 
             if (exit_flag) break;
+            
             g_current.scatter_ratio = (float)zeros / (N*N);
 
             uint64_t score = compute_score(&g_current, dheap, points);
@@ -192,7 +190,7 @@ int main() {
             list_insert_in_order_capped(&score_list, score, current_num, K);
 
 #ifdef DEBUG
-            printf("score for graph %d is %lu scatter %f\n", current_num, score, g_current.scatter_ratio);
+            printf("score for graph %d is %lu scatter %f using %s\n", current_num, score, g_current.scatter_ratio, g_current.scatter_ratio <= MAX_SCATTER ? "heap" : "matrix");
             printf("list length is %d\n", score_list.length);
             printf("list tail is pointing %d(%ld)\n", score_list.tail->position, score_list.tail->score);
             print_list(&score_list);
@@ -221,12 +219,12 @@ int main() {
         }
     }
 
-    free(points);
-    free(dheap->node_pos);
-    free(dheap->data);
-    free(dheap);
-    free(g_current.matrix);
-    destroy_list(&score_list);
+    // free(points);
+    // free(dheap->node_pos);
+    // free(dheap->data);
+    // free(dheap);
+    // free(g_current.matrix);
+    // destroy_list(&score_list);
     printf("\n");
     return 0;
 }
