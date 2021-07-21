@@ -37,7 +37,6 @@ void swap(void **x, void **y) {
     *y = tmp;
 }
 
-uint32_t my_stoi(const char *str, uint32_t len);
 uint64_t compute_score(graph_t *graph, uint64_t *points);
 scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next, scores_list_node_t *prev);
 void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
@@ -94,7 +93,8 @@ int main() {
         if (buffer[0] == 'A') {
             uint32_t index = 0;
             uint32_t read;
-            char *it_start, *it_end;
+            uint32_t num = 0;
+            char *it;
 
             for (uint32_t i = 0; i < N; i++) {
                 if (scanf("%s%n", buffer, &read) == EOF) {
@@ -102,20 +102,20 @@ int main() {
                     break;
                 }
 
-                it_start = buffer;
-                it_end = buffer;
+                it = buffer;
 
                 while (read > 0) {
-                    if (*it_end == ',' || read == 1) {
-                        uint32_t num = my_stoi(it_start, it_end - it_start);
 
+                    if (*it == ',' || read == 1) {
                         g_current.matrix[index] = num;
+                        num = 0;
 
-                        it_start = it_end + 1;
                         index++;
+                    } else {
+                        num = num * 10 + (*it - '0');
                     }
 
-                    it_end++;
+                    it++;
                     read--;
                 }
             }
@@ -160,15 +160,6 @@ exit:
     // destroy_list(&score_list);
     printf("\n");
     return 0;
-}
-
-inline uint32_t my_stoi(const char *str, uint32_t len) {
-    uint32_t val = 0;
-    while (len > 0) {
-        val = val * 10 + (*str++ - '0');
-        len--;
-    }
-    return val;
 }
 
 uint64_t compute_score(graph_t *graph, uint64_t *points) {
