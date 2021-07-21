@@ -6,11 +6,13 @@
 #include <string.h>
 
 #define STR_BUFF_SIZE 4096
+#define MAX_SCATTER 0.3
 
 typedef struct
 {
     int vert_num;
     uint32_t *matrix;
+    float scatter_ratio;
 
 } graph_t;
 
@@ -61,6 +63,38 @@ scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_nod
 void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
 void destroy_list(scores_list_t *list);
 void destroy_list_from(scores_list_t *list, scores_list_node_t *from);
+
+u_int64_t get_distance(u_int64_t dist[], bool sptSet[], int V) {
+    uint64_t min = UINT64_MAX, min_index = -1;
+
+    for (int v = 0; v < V; v++)
+        if (sptSet[v] == false && dist[v] <= min)
+            min = dist[v], min_index = v;
+
+    return min_index;
+}
+
+void dijkstra(const graph_t *graph, int src, u_int64_t *dist) {
+    int V = graph->vert_num;
+
+    bool sptSet[V];
+
+    for (int i = 0; i < V; i++)
+        dist[i] = UINT64_MAX, sptSet[i] = false;
+
+    dist[src] = 0;
+
+    for (int count = 0; count < V - 1; count++) {
+        u_int64_t u = get_distance(dist, sptSet, V);
+
+        sptSet[u] = true;
+
+        for (int v = 0; v < V; v++) {
+            if (!sptSet[v] && graph->matrix[u * V + v] && dist[u] != UINT64_MAX && dist[u] + graph->matrix[u * V + v] < dist[v])
+                dist[v] = dist[u] + graph->matrix[u * V + v];
+        }
+    }
+}
 
 void print_list(scores_list_t *list) {
     scores_list_node_t *it = list->head;
@@ -118,6 +152,7 @@ int main() {
             uint32_t index = 0;
             uint32_t read;
             char *it_start, *it_end;
+            uint32_t zeros = 0;
 
             for (int i = 0; i < N; i++) {
                 if (scanf("%s%n", buffer, &read) == EOF) {
@@ -131,6 +166,8 @@ int main() {
                 while (read > 0) {
                     if (*it_end == ',' || read == 1) {
                         uint32_t num = my_stoi(it_start, it_end - it_start);
+
+                        if (!num) zeros++;
 
 #ifdef VERBOSE
                         printf("read num %d adding to matrix in pos %d\n", num, index);
@@ -148,13 +185,14 @@ int main() {
             }
 
             if (exit_flag) break;
+            g_current.scatter_ratio = (float)zeros / (N*N);
 
             uint64_t score = compute_score(&g_current, dheap, points);
 
             list_insert_in_order_capped(&score_list, score, current_num, K);
 
 #ifdef DEBUG
-            printf("score for graph %d is %lu\n", current_num, score);
+            printf("score for graph %d is %lu scatter %f\n", current_num, score, g_current.scatter_ratio);
             printf("list length is %d\n", score_list.length);
             printf("list tail is pointing %d(%ld)\n", score_list.tail->position, score_list.tail->score);
             print_list(&score_list);
@@ -205,7 +243,10 @@ inline uint32_t my_stoi(const char *str, uint32_t len) {
 uint64_t compute_score(const graph_t *graph, minheap_t *heap, uint64_t *points) {
     uint64_t sum = 0;
 
-    dijkstra_h(graph, 0, points, heap);
+    if (graph->scatter_ratio <= MAX_SCATTER)
+        dijkstra_h(graph, 0, points, heap);
+    else
+        dijkstra(graph, 0, points);
 
     for (uint32_t i = 0; i < graph->vert_num; i++) {
         if (points[i] != UINT64_MAX) sum += points[i];
@@ -341,7 +382,7 @@ void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t p
 
     uint32_t curr = 0;
 
-    if( list->length >= cap && score > list->tail->score) return;
+    if (list->length >= cap && score > list->tail->score) return;
 
     if (list->head == NULL) {
         node = make_node(position, score, NULL, NULL);
