@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,7 +8,7 @@
 
 typedef struct
 {
-    int vert_num;
+    uint32_t vert_num;
     uint32_t *matrix;
 
 } graph_t;
@@ -63,7 +62,6 @@ void print_list(scores_list_t *list) {
 
 int main() {
     char buffer[STR_BUFF_SIZE];
-    int exit_flag = 0;
 
     uint32_t N, K;
 
@@ -74,7 +72,8 @@ int main() {
 
     scores_list_t score_list = {.head = NULL, .tail = NULL, .length = 0};
 
-    int first_topk = 1;
+    bool first_topk = true;
+    bool exit_flag = 0;
 
     if (scanf("%d", &N) == EOF) {
         exit(0);
@@ -86,7 +85,7 @@ int main() {
     points = (uint64_t *)malloc(N * sizeof(uint64_t));
 
     g_current.vert_num = N;
-    g_current.matrix = (uint32_t *)malloc(N * N * sizeof(int));
+    g_current.matrix = (uint32_t *)malloc(N * N * sizeof(uint32_t));
 
     while (!exit_flag) {
         if (scanf("%s", buffer) == EOF) {
@@ -97,9 +96,9 @@ int main() {
             uint32_t read;
             char *it_start, *it_end;
 
-            for (int i = 0; i < N; i++) {
+            for (uint32_t i = 0; i < N; i++) {
                 if (scanf("%s%n", buffer, &read) == EOF) {
-                    exit_flag = 1;
+                    exit_flag = true;
                     break;
                 }
 
@@ -121,7 +120,7 @@ int main() {
                 }
             }
 
-            if (exit_flag) break;
+            if (exit_flag) goto exit;
 
             uint64_t score = compute_score(&g_current, points);
 
@@ -136,26 +135,25 @@ int main() {
             current_num++;
 
         } else if (buffer[0] == 'T') {
-            int first_flag = 1;
             scores_list_node_t *it = score_list.head;
 
             if (!first_topk) {
                 printf("\n");
             }
 
-            for (int i = 0; i < K && it != NULL; i++) {
-                if (!first_flag) printf(" ");
+            for (uint32_t i = 0; it != NULL; i++) {
+                if (i) printf(" ");
                 printf("%d", it->position);
-                first_flag = 0;
                 it = it->next;
             }
 
-            first_topk = 0;
+            first_topk = false;
         } else {
             break;
         }
     }
 
+exit:
     // usano tempo, in ogni caso la mamoria viene liberata in uscita
     // free(points);
     // free(g_current.matrix);
@@ -291,9 +289,11 @@ void destroy_list_from(scores_list_t *list, scores_list_node_t *from) {
 uint64_t matr_distance(uint32_t num, u_int64_t *dist, bool *visited) {
     uint64_t min = UINT64_MAX, min_index = -1;
 
-    for (int i = 0; i < num; i++)
-        if (!visited[i] && dist[i] <= min)
-            min = dist[i], min_index = i;
+    for (uint32_t i = 0; i < num; i++)
+        if (visited[i] == false && dist[i] <= min) {
+            min_index = i;
+            min = dist[i];
+        }
 
     return min_index;
 }
@@ -303,17 +303,17 @@ void matr_dijkstra(graph_t *graph, uint32_t start, uint64_t *dist) {
 
     bool visited[N];
 
-    for (int i = 0; i < N; i++)
+    for (uint32_t i = 0; i < N; i++)
         dist[i] = UINT64_MAX, visited[i] = false;
 
     dist[start] = 0;
 
-    for (int count = 0; count < N - 1; count++) {
+    for (uint32_t count = 0; count < N - 1; count++) {
         u_int64_t u = matr_distance(N, dist, visited);
 
         visited[u] = true;
 
-        for (int v = 0; v < N; v++) {
+        for (uint32_t v = 0; v < N; v++) {
             // non vistato con distanza non nulla non già massima
             // e non maggiore di quella già eventualmente calcolata per altri nodi successivi
             if (!visited[v] && graph->matrix[u * N + v] && dist[u] != UINT64_MAX && dist[u] + graph->matrix[u * N + v] < dist[v])
