@@ -44,6 +44,7 @@ void destroy_list(scores_list_t *list);
 void destroy_list_from(scores_list_t *list, scores_list_node_t *from);
 uint64_t matr_distance(uint32_t num, u_int64_t *dist, bool *visited);
 void matr_dijkstra(graph_t *graph, uint32_t start, uint64_t *dist);
+uint32_t fgets_unlocked(char* buffer, uint32_t size);
 
 #ifdef DEBUG
 
@@ -61,6 +62,7 @@ void print_list(scores_list_t *list) {
 
 int main() {
     char buffer[STR_BUFF_SIZE];
+    char* token;
 
     uint32_t N, K;
 
@@ -74,12 +76,13 @@ int main() {
     bool first_topk = true;
     bool exit_flag = 0;
 
-    if (scanf("%d", &N) == EOF) {
-        exit(0);
-    }
-    if (scanf("%d", &K) == EOF) {
-        exit(0);
-    }
+    fgets_unlocked(buffer, STR_BUFF_SIZE);
+
+    token = strtok(buffer, " ");
+    N = atoi(token);
+
+    token = strtok(NULL, " ");
+    K = atoi(token);
 
     points = (uint64_t *)malloc(N * sizeof(uint64_t));
 
@@ -87,9 +90,10 @@ int main() {
     g_current.matrix = (uint32_t *)malloc(N * N * sizeof(uint32_t));
 
     while (!exit_flag) {
-        if (scanf("%s", buffer) == EOF) {
+        if (!fgets_unlocked(buffer, STR_BUFF_SIZE)) {
             break;
         }
+
         if (buffer[0] == 'A') {
             uint32_t index = 0;
             uint32_t read;
@@ -97,10 +101,17 @@ int main() {
             char *it;
 
             for (uint32_t i = 0; i < N; i++) {
-                if (scanf("%s%n", buffer, &read) == EOF) {
+
+                read = fgets_unlocked(buffer, STR_BUFF_SIZE);
+
+                if (read == 0) {
                     exit_flag = true;
                     break;
                 }
+
+#ifdef DEBUG
+                printf("%s\n", buffer);
+#endif
 
                 it = buffer;
 
@@ -129,7 +140,7 @@ int main() {
 #ifdef DEBUG
             printf("score for graph %d is %lu\n", current_num, score);
             printf("list tail is pointing %d(%ld) length is %d\n", score_list.tail->position, score_list.tail->score, score_list.length);
-            print_list(&score_list);
+            //print_list(&score_list);
 #endif
 
             current_num++;
@@ -160,6 +171,22 @@ exit:
     // destroy_list(&score_list);
     printf("\n");
     return 0;
+}
+
+uint32_t fgets_unlocked(char* buffer, uint32_t size) {
+    uint32_t i = 0;
+
+    for (i = 0; i < size; ++i) {
+        char read = (char)getchar_unlocked();
+        buffer[i] = read;
+
+        if(!read || read == '\n') {
+            buffer[i] = 0;
+            break;
+        }
+    }
+
+    return i;
 }
 
 uint64_t compute_score(graph_t *graph, uint64_t *points) {

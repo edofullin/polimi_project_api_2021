@@ -8,3 +8,5 @@ benchmark/output
 benchmark/binaries
 benchmark/sources
 input.*
+
+bin
