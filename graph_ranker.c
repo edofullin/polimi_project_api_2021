@@ -42,8 +42,8 @@ scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_nod
 void list_insert_in_order_capped(scores_list_t *list, uint64_t score, uint32_t position, uint32_t cap);
 void destroy_list(scores_list_t *list);
 void destroy_list_from(scores_list_t *list, scores_list_node_t *from);
-uint64_t matr_distance(uint32_t num, u_int64_t *dist, bool *visited);
-void matr_dijkstra(graph_t *graph, uint32_t start, uint64_t *dist);
+uint64_t djk_minimum_dist_node(uint32_t num, u_int64_t *dist, bool *seen);
+void djk_score_from(graph_t *graph, uint32_t start, uint64_t *dist);
 uint32_t fgets_unlocked(char* buffer, uint32_t size);
 
 #ifdef DEBUG
@@ -102,7 +102,7 @@ int main() {
 
             for (uint32_t i = 0; i < N; i++) {
 
-                read = fgets_unlocked(buffer, STR_BUFF_SIZE);
+                read = fgets_unlocked(buffer, STR_BUFF_SIZE) + 1;
 
                 if (read == 0) {
                     exit_flag = true;
@@ -192,7 +192,7 @@ uint32_t fgets_unlocked(char* buffer, uint32_t size) {
 uint64_t compute_score(graph_t *graph, uint64_t *points) {
     uint64_t sum = 0;
 
-    matr_dijkstra(graph, 0, points);  // uso dijkstra con le matrici, i grafi non sono sparsi in genere.
+    djk_score_from(graph, 0, points);  // uso dijkstra con le matrici, i grafi non sono sparsi in genere.
 
     for (uint32_t i = 0; i < graph->vert_num; i++) {
         if (points[i] != UINT64_MAX) sum += points[i];
@@ -304,38 +304,39 @@ void destroy_list_from(scores_list_t *list, scores_list_node_t *from) {
     }
 }
 
-uint64_t matr_distance(uint32_t num, u_int64_t *dist, bool *visited) {
-    uint64_t min = UINT64_MAX, min_index = -1;
+uint64_t djk_minimum_dist_node(uint32_t num, u_int64_t *dist, bool *seen) {
+    uint64_t mpos = -1, old = UINT64_MAX;
 
     for (uint32_t i = 0; i < num; i++)
-        if (visited[i] == false && dist[i] <= min) {
-            min_index = i;
-            min = dist[i];
+        if (dist[i] <= old && !seen[i]) {
+            mpos = i;
+            old = dist[i];
         }
 
-    return min_index;
+    return mpos;
 }
 
-void matr_dijkstra(graph_t *graph, uint32_t start, uint64_t *dist) {
+void djk_score_from(graph_t *graph, uint32_t start, uint64_t *dist) {
     uint32_t N = graph->vert_num;
 
-    bool visited[N];
+    bool seen[N];
 
+    // non ho visitato nulla quindi ho distanza massima da tutto...
     for (uint32_t i = 0; i < N; i++)
-        dist[i] = UINT64_MAX, visited[i] = false;
+        seen[i] = false, dist[i] = UINT64_MAX;
 
+    // tranne che da me stesso
     dist[start] = 0;
 
-    for (uint32_t count = 0; count < N - 1; count++) {
-        u_int64_t u = matr_distance(N, dist, visited);
+    for (uint32_t i = 0; i < N - 1; i++) {
+        uint64_t min = djk_minimum_dist_node(N, dist, seen); // ottengo nodo più vicino
 
-        visited[u] = true;
+        seen[min] = true; // l'ho visitato
 
-        for (uint32_t v = 0; v < N; v++) {
-            // non vistato con distanza non nulla non già massima
-            // e non maggiore di quella già eventualmente calcolata per altri nodi successivi
-            if (!visited[v] && graph->matrix[u * N + v] && dist[u] != UINT64_MAX && dist[u] + graph->matrix[u * N + v] < dist[v])
-                dist[v] = dist[u] + graph->matrix[u * N + v];
+        // aggiorno tutti i nodi con la nuova informazione
+        for (uint32_t j = 0; j < N; j++) {
+            if (!seen[j] && graph->matrix[min * N + j] && dist[min] != UINT64_MAX && dist[min] + graph->matrix[min * N + j] < dist[j])
+                dist[j] = dist[min] + graph->matrix[min * N + j];
         }
     }
 }

@@ -1,4 +1,4 @@
-/usr/bin/gcc -DEVAL (-DDEBUG) (-DORDERED) -g3 -Wall -Werror -fsanitize=address -std=gnu11 -pipe -o graph_ranker graph_ranker.c
+COMPILAR: /usr/bin/gcc -DEVAL (-DDEBUG) (-DORDERED) -g3 -Wall -Werror -fsanitize=address -std=gnu11 -pipe -o graph_ranker graph_ranker.c
 
 MEMORY LEAK: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./eseguibile < input (> output)
 CALLTIME: valgrind --tool=callgrind --callgrind-out-file=outputfile ./eseguibile < input (> output)
