@@ -35,7 +35,7 @@ typedef struct {
     bool seen;
 } djk_vertex_t;
 
-uint64_t compute_score(graph_t *graph, uint64_t *points);
+uint64_t compute_score(graph_t *graph);
 
 scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next, scores_list_node_t *prev);
 
@@ -74,8 +74,6 @@ int main() {
     uint32_t current_num = 0;
     graph_t g_current;
 
-    uint64_t *points;
-
     scores_list_t score_list = {.head = NULL, .tail = NULL, .length = 0};
 
     bool first_topk = true;
@@ -88,8 +86,6 @@ int main() {
 
     token = strtok(NULL, " ");
     K = atoi(token);
-
-    points = (uint64_t *) malloc(N * sizeof(uint64_t));
 
     g_current.vert_num = N;
     g_current.matrix = (uint32_t *) malloc(N * N * sizeof(uint32_t));
@@ -114,10 +110,6 @@ int main() {
                     break;
                 }
 
-#ifdef DEBUG
-                printf("%s\n", buffer);
-#endif
-
                 it = buffer;
 
                 while (read > 0) {
@@ -138,15 +130,12 @@ int main() {
 
             if (exit_flag) goto exit;
 
-            uint64_t score = compute_score(&g_current, points);
+            uint64_t score = compute_score(&g_current);
 
             list_insert_in_order_capped(&score_list, score, current_num, K);
 
 #ifdef DEBUG
             printf("score for graph %d is %lu\n", current_num, score);
-            printf("list tail is pointing %d(%ld) length is %d\n", score_list.tail->position, score_list.tail->score,
-                   score_list.length);
-            //print_list(&score_list);
 #endif
 
             current_num++;
@@ -195,16 +184,8 @@ uint32_t fgets_unlocked(char *buffer, uint32_t size) {
     return i;
 }
 
-uint64_t compute_score(graph_t *graph, uint64_t *points) {
-    uint64_t sum = 0;
-
-    *points = djk_score_from(graph, 0);  // uso dijkstra con le matrici, i grafi non sono sparsi in genere.
-
-    for (uint32_t i = 0; i < graph->vert_num; i++) {
-        if (points[i] != UINT64_MAX) sum += points[i];
-    }
-
-    return sum;
+uint64_t compute_score(graph_t *graph) {
+    return djk_score_from(graph, 0);  // uso dijkstra con le matrici, i grafi non sono sparsi in genere.
 }
 
 scores_list_node_t *make_node(uint32_t position, uint64_t score, scores_list_node_t *next, scores_list_node_t *prev) {
@@ -327,7 +308,8 @@ uint64_t djk_score_from(graph_t *graph, uint32_t source) {
     uint32_t N = graph->vert_num;
     uint64_t score = 0;
 
-    djk_vertex_t* vertices = malloc(N * sizeof(djk_vertex_t));
+    djk_vertex_t vertices[N];
+
 
     for (size_t i = 0; i < N; ++i) {
         vertices[i].distance = UINT64_MAX;
@@ -354,11 +336,9 @@ uint64_t djk_score_from(graph_t *graph, uint32_t source) {
     }
 
     for (size_t i = 0; i < N; ++i) {
-        if (score != UINT64_MAX)
+        if (vertices[i].distance != UINT64_MAX)
             score += vertices[i].distance;
     }
-
-    free(vertices);
 
     return score;
 }
